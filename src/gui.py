@@ -141,24 +141,42 @@ class PidManager():
 class Gui():
     def __init__(self, stdscr):
         self.title = Text(stdscr, TITLE_ASSET, curses.A_REVERSE)
+        self.pid_setup_conteiner = PidSetup(stdscr, PID_SETUP_CONTEINER_ASSET)
         self.simu_setup_conteiner = SimulationSetup(stdscr, SIMULATION_SETUP_ASSET)
         self.pid_manager = PidManager(MAX_NPIDS)
 
+        # generate pid setup input areas: (kp kd ki icon)
+        self.pid_setup_conteiner.generate_components(self.pid_manager.pid_list)
+        # generate pid num input area and start button
         self.simu_setup_conteiner.generate_components(
             self.set_num_of_pids, # num pids trigger
             self.start_simulation # start trigger
         )
-        
+
+        # draw the components
+        self.draw(True)
+
+        self.gui_content_map = []
+        self.set_num_of_pids(MAX_NPIDS)
         self.restart_simulation = td.Event()
 
     def draw(self, autorefresh=False):
         self.title.draw(autorefresh)
+        self.pid_setup_conteiner.draw(autorefresh)
         self.simu_setup_conteiner.draw(autorefresh)
     
     def set_num_of_pids(self, npids_str: str):
         """Num of PIDs trigger."""
         npids = int(npids_str)
+
         self.pid_manager.set_visible_pids(npids)
+        # set visible content and get pid labels that are visible
+        pid_label_list = self.pid_setup_conteiner.set_first_n_components_to_visible(npids)
+        # reset gui content to visible input areas
+        self.gui_content_map = [ self.simu_setup_conteiner.components_list ] # keep num_pids and start
+        for pid_label in pid_label_list:
+            # get the input areas of the pid_label (kp, kd, ki, icon)
+            self.gui_content_map.append(pid_label.components_list)
     
     def restart_simulation(self):
         """Start Button trigger."""
@@ -170,7 +188,6 @@ def main(stdscr: _CursesWindow):
     curses.noecho()
 
     gui = Gui(stdscr)
-    gui.draw()
     stdscr.getch()
 
 
