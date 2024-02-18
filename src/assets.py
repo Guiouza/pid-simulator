@@ -290,3 +290,37 @@ class TextInput(Text):
     def reset_attr(self, autorefresh=True):
         self.chattr(self.original_attr, False)
         self.chlabelattr(self.original_labelattr, autorefresh)
+
+
+class Conteiner(Text):
+    def __init__(self,
+                 conteiner: _CursesWindow,
+                 assetfile: str,
+                 attr=curses.A_NORMAL ):
+        super().__init__(conteiner, assetfile, attr)
+        self.components_list = []
+
+    def draw(self, autorefresh=False):
+        super().draw(autorefresh)
+
+        for component in self.components_list:
+            component.draw(autorefresh)
+
+        if autorefresh:
+            self.win.refresh()
+
+    def generate_components(self):
+        """
+        A prototype for a conteiner generate_components method.
+        """
+        pass
+    
+    def set_first_n_components_to_visible(self, n: int):
+        index = 0
+        for component in self.components_list:
+            if index < n:
+                component.visible = True
+                component.draw(True)
+            else:
+                component.clear(True)
+            index += 1
