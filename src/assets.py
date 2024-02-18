@@ -23,6 +23,9 @@ def read_asset(fname) -> dict[str: str|int]:
     match (type_info[0]):
         case 'text':
             pass
+        case 'button':
+            asset.setdefault('cursor_y', int(type_info[1]))
+            asset.setdefault('cursor_x', int(type_info[2]))
 
     return asset
 
@@ -126,3 +129,40 @@ class Text:
     
     def reset_attr(self, autorefresh=True):
         self.chattr(self.original_attr, autorefresh)
+
+
+class Button(Text):
+    def __init__(self,
+                 conteiner: _CursesWindow,
+                 assetfile: str,
+                 labelattr=curses.A_NORMAL,
+                 trigger=None ):
+        super().__init__(conteiner, assetfile, labelattr)
+        self.labelattr = self.attr
+        self.trigger = trigger
+    
+    def __call__(self):
+        """Call the trigger"""
+        return self.trigger()
+
+    def chlabelattr(self, labelattr, autorefresh=True):
+        """Change the label attrbute and redraw. Autorefresh will refresh the window."""
+        self.labelattr = labelattr
+        return super().chattr(labelattr, autorefresh)
+    
+    def chattr(self, attr, autorefresh=True):
+        """Dirivated from Text object, work just as `labelchatrr` method"""
+        self.labeltatr = attr
+        return super().chattr(attr, autorefresh)
+
+    def get_cursor_relyx(self) -> tuple[int, int]:
+        return self.asset['cursor_y'], self.asset['cursor_x']
+    
+    def get_cursor_absyx(self) -> tuple[int, int]:
+        y = self.asset['cursor_y'] + self.asset['win_y']
+        x = self.asset['cursor_x'] + self.asset['win_x']
+        return y, x
+
+    def reset_attr(self, autorefresh=True):
+        self.labelattr = self.original_attr
+        return super().reset_attr(autorefresh)
