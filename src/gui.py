@@ -1,4 +1,5 @@
 from curses import wrapper, _CursesWindow
+import threading as td
 import curses
 # internal libs
 from assets import *
@@ -10,8 +11,9 @@ TITLE_ASSET = './assets/title.txt'
 
 # simulaiton_setup -> conteiner
 SIMULATION_SETUP_ASSET = './assets/setup/conteiner.txt'
-# simulaiton_setup -> inputs
+# simulaiton_setup -> components
 NUM_PIDS_ASSET = './assets/setup/num_pids.txt'
+RESTART_ASSET = './assets/setup/start.txt'
 
 # Simulation Setting
 MAX_NPIDS = 9
@@ -27,7 +29,8 @@ class SimulationSetup(Conteiner):
 
     def generate_components(self, numpids_trigger, start_triiger):
         self.components_list = [
-            TextInput(self.win, NUM_PIDS_ASSET, trigger=numpids_trigger)
+            TextInput(self.win, NUM_PIDS_ASSET, trigger=numpids_trigger),
+            Button(self.win, RESTART_ASSET, trigger=start_triiger)
         ]
 
 
@@ -59,15 +62,23 @@ class Gui():
 
         self.simu_setup_conteiner.generate_components(
             self.set_num_of_pids, # num pids trigger
+            self.start_simulation # start trigger
         )
+        
+        self.restart_simulation = td.Event()
 
     def draw(self, autorefresh=False):
         self.title.draw(autorefresh)
+        self.simu_setup_conteiner.draw(autorefresh)
     
     def set_num_of_pids(self, npids_str: str):
         """Num of PIDs trigger."""
         npids = int(npids_str)
         self.pid_manager.set_visible_pids(npids)
+    
+    def restart_simulation(self):
+        """Start Button trigger."""
+        self.restart_simulation.set()
 
 
 def main(stdscr: _CursesWindow):
