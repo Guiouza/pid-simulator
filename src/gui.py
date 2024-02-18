@@ -158,6 +158,10 @@ class Gui():
 
         self.gui_content_map = []
         self.set_num_of_pids(MAX_NPIDS)
+        self.cursor_y_index = 0
+        self.cursor_x_index = 0
+
+        # simulation events
         self.restart_simulation = td.Event()
 
     def draw(self, autorefresh=False):
@@ -177,10 +181,46 @@ class Gui():
         for pid_label in pid_label_list:
             # get the input areas of the pid_label (kp, kd, ki, icon)
             self.gui_content_map.append(pid_label.components_list)
-    
+
     def restart_simulation(self):
         """Start Button trigger."""
         self.restart_simulation.set()
+    
+    def move_cursor(self, direction) -> int:
+        have_moved = False
+
+        gui_content_map_rows = len(self.gui_content_map)
+        gui_content_map_cols = len(self.gui_content_map[self.cursor_y_index])
+        match direction:
+            case 'up':
+                if self.cursor_y_index > 0:
+                    self.cursor_y_index -= 1
+                    have_moved = True
+            case 'down':
+                if self.cursor_y_index + 1 < gui_content_map_rows:
+                    self.cursor_y_index += 1
+                    have_moved = True
+            case 'left':
+                if self.cursor_x_index > 0:
+                    self.cursor_x_index -= 1
+                    have_moved = True
+            case 'right':
+                if self.cursor_x_index + 1 < gui_content_map_cols:
+                    self.cursor_x_index += 1
+                    have_moved = True
+
+        # Correct the x position when y is moved
+        gui_content_map_cols = len(self.gui_content_map[self.cursor_y_index])
+        if self.cursor_x_index >= gui_content_map_cols:
+            self.cursor_x_index = gui_content_map_cols - 1
+        
+        if self.change_color.is_set():
+            self.blink()
+
+        return have_moved
+
+    def get_current_selection(self) -> TextInput|Button:
+        return self.gui_content_map[self.cursor_y_index][self.cursor_x_index]
 
 
 def main(stdscr: _CursesWindow):
