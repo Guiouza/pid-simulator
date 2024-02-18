@@ -2,10 +2,31 @@ from curses import wrapper, _CursesWindow
 import curses
 # internal libs
 from assets import *
+from pid import Pid
 
 
 # title
 TITLE_ASSET = './assets/title.txt'
+
+
+class PidManager():
+    def __init__(self, npids):
+        self.visible_pids = npids
+        self.pid_list = [Pid() for n in range(npids)]
+    
+    def set_visible_pids(self, npids: int) -> None:
+        self.visible_pids = npids
+    
+    def get_visible_pids(self) -> list[Pid]:
+        return self.pid_list[:self.visible_pids]
+
+    def update_pid_pos(self, dt: float) -> None:
+        for pid in self.get_visible_pids():
+            pid(dt)
+
+    def reset_pid_pos(self):
+        for pid in self.pid_list:
+            pid.reset()
 
 
 class Gui():
