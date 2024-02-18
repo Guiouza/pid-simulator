@@ -4,6 +4,7 @@ import curses
 # internal libs
 from assets import *
 from pid import Pid
+import filters
 
 
 # title
@@ -15,8 +16,91 @@ SIMULATION_SETUP_ASSET = './assets/setup/conteiner.txt'
 NUM_PIDS_ASSET = './assets/setup/num_pids.txt'
 RESTART_ASSET = './assets/setup/start.txt'
 
+# pid setup -> conteiner:
+PID_SETUP_CONTEINER_ASSET = './assets/pid_label/conteiner.txt'
+# pid setup -> label:
+PID_LABEL_ASSET = './assets/pid_label/pid_label.txt'
+# pid setup -> inputs:
+PID_KP_ASSET = './assets/pid_label/kp.txt'
+PID_KD_ASSET = './assets/pid_label/kd.txt'
+PID_KI_ASSET = './assets/pid_label/ki.txt'
+PID_ICON_ASSET = './assets/pid_label/icon.txt'
+
 # Simulation Setting
 MAX_NPIDS = 9
+
+
+class PidLabel(Conteiner):
+    def __init__(self,
+                conteiner: _CursesWindow,
+                assetfile: str,
+                n_id: int,
+                pid: Pid,
+                attr=curses.A_NORMAL):
+        super().__init__(conteiner, assetfile, attr)
+        self.format_asset(n_id=n_id)
+        self.pid = pid
+
+    def clear(self, autorefresh=True):
+        for component in self.components_list:
+            component.current_content = component.asset['default']
+        return super().clear(autorefresh)
+
+    def generate_components(self):
+        """
+        Create the labels to setup the linked pid in self.pid
+        """
+        self.components_list = [
+            TextInput(
+                self.win,
+                PID_KP_ASSET,
+                filterfunc=filters.isFloat,
+                trigger=self.pid.set_kp
+            ),
+            TextInput(
+                self.win,
+                PID_KD_ASSET,
+                filterfunc=filters.isFloat,
+                trigger=self.pid.set_kd
+            ),
+            TextInput(
+                self.win,
+                PID_KI_ASSET,
+                filterfunc=filters.isFloat,
+                trigger=self.pid.set_ki
+            ),
+            TextInput(
+                self.win,
+                PID_ICON_ASSET,
+                filterfunc=str.isprintable,
+                trigger=self.pid.set_icon,
+                labelattr=curses.A_NORMAL
+            )
+        ]
+
+
+class PidSetup(Conteiner):
+    def __init__(self,
+                 conteiner: _CursesWindow,
+                 assetfile: str,
+                 attr=curses.A_NORMAL ):
+        super().__init__(conteiner, assetfile, attr)
+        self.create_win()
+
+    def generate_components(self, pid_list: list[Pid]) -> list[Pid]:
+        for n in range(len(pid_list)):
+            component = PidLabel(self.win, PID_LABEL_ASSET, n+1, pid_list[n])
+            # fix y position
+            component.asset['win_y'] += component.asset['nlines'] * n
+            component.create_win()
+            component.generate_components()
+            # apeend to components_list
+            self.components_list.append(component)
+
+    def set_first_n_components_to_visible(self, n: int) -> list[PidLabel]:
+        super().set_first_n_components_to_visible(n)
+
+        return self.components_list[:n]
 
 
 class SimulationSetup(Conteiner):
