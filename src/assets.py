@@ -1,3 +1,7 @@
+from curses import _CursesWindow
+import curses
+
+
 def read_asset(fname) -> dict[str: str|int]:
     asset = {}
     # read asset file
@@ -21,3 +25,104 @@ def read_asset(fname) -> dict[str: str|int]:
             pass
 
     return asset
+
+
+class Text:
+    def __init__(self,
+                 conteiner: _CursesWindow,
+                 assetfile: str,
+                 attr=curses.A_NORMAL ):
+        self.asset = read_asset(assetfile)
+        self.asset['win_y'] += conteiner.getbegyx()[0]
+        self.asset['win_x'] += conteiner.getbegyx()[1]
+
+        self.attr = attr
+        self.original_attr = attr
+        self.visible = True
+        self.conteiner = conteiner
+        self.win = None
+        self.is_visible = False
+    
+    def chattr(self, attr, autorefresh=True):
+        """
+        Change the attribute and redraw the window, but do not refresh.
+
+        `autorefresh` refresh the window so you dont need to do yourself using the
+        conteiner window. The default is False for optimization purposes, 
+        is recomended to make all changes in the windows then refresh.
+        """
+        self.attr = attr
+        self.draw(autorefresh)
+
+    def clear(self, autorefresh=True):
+        """
+        Clear the window of the asset, to show again just call draw.
+
+        `autorefresh` refresh the window after cleaning. For optimization 
+        purposes is set to false by default so you can refresh the entier 
+        window at once.
+        """
+        self.win.clear()
+
+        if autorefresh:
+            self.win.refresh()
+
+        self.visible = False
+
+    def create_win(self) -> _CursesWindow:
+        """
+        Create the window spectified by the asset, this action is not in the 
+        __init__ method because you could wan change the windows position 
+        original given by the asset.
+        """
+        self.win = self.conteiner.subwin(
+            self.asset['nlines'],
+            self.asset['ncols'],
+            self.asset['win_y'],
+            self.asset['win_x']
+        )
+        return self.win
+
+    def draw(self, autorefresh=False) -> None:
+        """
+        Calls window.addstr in the asset text with all the especifications by 
+        the asset and the attr. The window it self does not need to be created fist.
+
+        `autorefresh` refresh the window so you dont need to do yourself using the
+        conteiner window. The default is False for optimization purposes, 
+        is recomended to make all changes in the windows then refresh.
+        """
+        if self.visible == False:
+            self.win.clear()
+            return
+
+        if self.win == None:
+            self.win = self.create_win()
+
+        if self.asset['draw_box']:
+            self.win.box()
+
+        text_y = self.asset['text_y']
+        text_x = self.asset['text_x']
+        for line in self.asset['text'].splitlines():
+            try:
+                self.win.addstr(text_y, text_x, line, self.attr)
+                text_y += 1
+            except:
+                # cursor exceeds the windows size
+                self.win.move(self.asset['text_y'], self.asset['text_x'])
+        
+        if autorefresh:
+            self.win.refresh()
+        self.is_visible = True
+
+    def format_asset(self, **kargs) -> None:
+        """
+        Format the asset text, example: \n
+            if asset is '{a} + {b} = {c}', the call for format_asset(a=1, b=2, c=3)
+        will change the asset text to '1 + 2 = 3' the same way str.format funciton does.
+        """
+        self.asset['text'] = self.asset['text'].format(**kargs)
+    
+    def reset_attr(self, autorefresh=True):
+        self.chattr(self.original_attr, autorefresh)
