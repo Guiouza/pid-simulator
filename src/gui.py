@@ -67,6 +67,7 @@ class Gui():
     def set_num_of_pids(self, npids_str: str):
         """Num of PIDs trigger."""
         npids = int(npids_str)
+        self.pid_manager.set_visible_pids(npids)
 
 
 def main(stdscr: _CursesWindow):
