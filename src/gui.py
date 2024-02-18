@@ -3,6 +3,7 @@ import threading as td
 import curses
 # internal libs
 from assets import *
+from mathtools import *
 from pid import Pid
 import filters
 
@@ -25,6 +26,16 @@ PID_KP_ASSET = './assets/pid_label/kp.txt'
 PID_KD_ASSET = './assets/pid_label/kd.txt'
 PID_KI_ASSET = './assets/pid_label/ki.txt'
 PID_ICON_ASSET = './assets/pid_label/icon.txt'
+
+# Simulation -> Conteiner
+SIMULATION_CONTEINER_ASSET = './assets/simulation/conteiner.txt'
+# Simulation -> Header
+HEADER_ASSET = './assets/simulation/header.txt'
+PID_POS_ASSET = './assets/simulation/pid_pos.txt'
+# Simulation -> Display
+DISPLAY_ASSET = './assets/simulation/display.txt'
+TICK_GRID_ASSET = './assets/simulation/tick_grid.txt'
+PID_GRID_ASSET = './assets/simulation/pid_grid.txt'
 
 # Simulation Setting
 MAX_NPIDS = 9
@@ -118,6 +129,152 @@ class SimulationSetup(Conteiner):
         ]
 
 
+class PidPosition(Text):
+    pos_max_length = 7
+    def __init__(self,
+                    conteiner: _CursesWindow,
+                    assetfile: str,
+                    pid: Pid,
+                    attr=curses.A_NORMAL ):
+        super().__init__(conteiner, assetfile, attr)
+        self.asset_template = self.asset['text']
+        self.pid = pid
+
+    def draw(self, autorefresh=False) -> None:
+        self.asset['text'] = self.asset_template
+        self.format_asset(
+            icon=self.pid.icon,
+            pos=f"{'+' if self.pid.pos > 0 else ''}{self.pid.pos:3.2f}"
+            .rjust(self.pos_max_length)
+        )
+        return super().draw(autorefresh)
+
+
+class Header(Conteiner):
+    def __init__(self,
+                 conteiner: _CursesWindow,
+                 assetfile: str,
+                 attr=curses.A_NORMAL ):
+        super().__init__(conteiner, assetfile, attr)
+        # align: center
+        conteiner_ncols = conteiner.getmaxyx()[1]
+        self.asset['win_x'] += (conteiner_ncols - self.asset['ncols'])//2
+
+        self.create_win()
+
+    def generate_components(self, pid_list: list[Pid]):
+        n = 0
+        for pid in pid_list:
+            component = PidPosition(self.win, PID_POS_ASSET, pid)
+            component.asset['win_y'] += component.asset['nlines']*n
+            self.components_list.append(component)
+            n += 1
+
+
+class PidGrid(Text):
+    def __init__(self,
+                    conteiner: _CursesWindow,
+                    assetfile: str,
+                    pid=None,
+                    attr=curses.A_NORMAL ):
+        super().__init__(conteiner, assetfile, attr)
+        self.pid = pid
+
+        conteiner_ncols = conteiner.getmaxyx()[1]
+        # set grid width (ncols)
+        self.grid_width = conteiner_ncols - self.asset['ncols']
+        # set asset ncols
+        self.asset['ncols'] = conteiner_ncols
+        # generate the grid base template
+        self.format_asset(grid='│'.center(self.grid_width))
+        self.grid_template = self.asset['text']
+
+    def draw(self, autorefresh=False) -> None:
+        self.asset['text'] = self.grid_template # reset asset['text']
+        
+        if self.visible:
+            n = map_pos(self.pid.pos, self.grid_width)
+            # format to show the pid icon
+            self.asset['text'] = self.asset['text'][:n] + \
+                self.pid.icon + self.asset['text'][n+1:]
+            return super().draw(autorefresh)
+        
+        self.visible = True
+        super().draw(autorefresh)
+        self.visible = False    
+        return
+
+
+class Display(Conteiner):
+    def __init__(self,
+                 conteiner: _CursesWindow,
+                 assetfile: str,
+                 attr=curses.A_NORMAL ):
+        super().__init__(conteiner, assetfile, attr)
+        conteiner_ncols = conteiner.getmaxyx()[1]
+        # Fill wall the window marging with the border (-2)
+        self.asset['ncols'] = conteiner_ncols - 2
+
+        self.create_win()
+
+    def generate_components(self, pid_list: list[Pid]):
+        tick = Text(self.win, TICK_GRID_ASSET)
+        # format and set window width (ncols)
+        tick.asset['ncols'] = self.asset['ncols']
+        space = self.asset['ncols']//2 - len('+100')
+        tick.format_asset(space=' '*space)
+        # add to components
+        self.components_list = [ tick ]
+
+        for n in range(self.asset['nlines'] - tick.asset['nlines']):
+            if n == 0 or n == self.asset['nlines'] - tick.asset['nlines'] - 1:
+                # grid that doesn't have a pid
+                component = PidGrid(self.win, PID_GRID_ASSET)
+                component.visible = False
+            else:
+                # grid that will show their pids
+                component = PidGrid(self.win, PID_GRID_ASSET, pid_list[n-1])
+            component.asset['win_y'] += component.asset['nlines']*n + tick.asset['nlines']
+
+            self.components_list.append(component) 
+
+    def set_first_n_components_to_visible(self, n: int):
+        index = 0
+        for pidgrid in self.components_list[2:-1]:
+            if index < n:
+                pidgrid.visible = True
+            else:
+                pidgrid.visible = False
+            index += 1
+
+            pidgrid.draw(True)
+
+
+class Simulation(Conteiner):
+    def __init__(self,
+                 conteiner: _CursesWindow,
+                 assetfile: str,
+                 attr=curses.A_NORMAL ):
+        super().__init__(conteiner, assetfile, attr)
+        self.asset['nlines'] = curses.LINES
+        self.asset['ncols'] = nearst_odd(curses.COLS - self.asset['win_x'])
+
+        self.create_win()
+
+    def generate_components(self, pid_list):
+        self.components_list = [
+            Header(self.win, HEADER_ASSET),
+            Display(self.win, DISPLAY_ASSET)
+        ]
+        for component in self.components_list:
+            component.generate_components(pid_list)
+
+    def set_first_n_components_to_visible(self, n: int):
+        header, display = self.components_list
+        header.set_first_n_components_to_visible(n)
+        display.set_first_n_components_to_visible(n)
+
+
 class PidManager():
     def __init__(self, npids):
         self.visible_pids = npids
@@ -143,10 +300,14 @@ class Gui():
         self.title = Text(stdscr, TITLE_ASSET, curses.A_REVERSE)
         self.pid_setup_conteiner = PidSetup(stdscr, PID_SETUP_CONTEINER_ASSET)
         self.simu_setup_conteiner = SimulationSetup(stdscr, SIMULATION_SETUP_ASSET)
+        self.simulation_conteiner = Simulation(stdscr, SIMULATION_CONTEINER_ASSET)
+
         self.pid_manager = PidManager(MAX_NPIDS)
 
         # generate pid setup input areas: (kp kd ki icon)
         self.pid_setup_conteiner.generate_components(self.pid_manager.pid_list)
+        # generate the simulation header and display
+        self.simulation_conteiner.generate_components(self.pid_manager.pid_list)
         # generate pid num input area and start button
         self.simu_setup_conteiner.generate_components(
             self.set_num_of_pids, # num pids trigger
@@ -168,12 +329,15 @@ class Gui():
         self.title.draw(autorefresh)
         self.pid_setup_conteiner.draw(autorefresh)
         self.simu_setup_conteiner.draw(autorefresh)
+        self.simulation_conteiner.draw(autorefresh)
     
     def set_num_of_pids(self, npids_str: str):
         """Num of PIDs trigger."""
         npids = int(npids_str)
 
         self.pid_manager.set_visible_pids(npids)
+        self.simulation_conteiner.set_first_n_components_to_visible(npids)
+
         # set visible content and get pid labels that are visible
         pid_label_list = self.pid_setup_conteiner.set_first_n_components_to_visible(npids)
         # reset gui content to visible input areas
