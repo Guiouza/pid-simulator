@@ -6,6 +6,7 @@ class Pid:
         # graph & movement
         self.pos = pos
         self.vel = 0
+        self.constant_error = 0
         # PID constants
         self.sp = sp
         self.kp = kp
@@ -23,13 +24,14 @@ class Pid:
         d_fix = self.kd*(error - self.last_error)/dt
         self.last_error = error
 
-        self.integral += error
+        self.integral += error * dt
         i_fix = self.ki * self.integral
 
-        aceleracao = p_fix + d_fix + i_fix
+        aceleracao = p_fix + d_fix + i_fix - self.constant_error
 
-        self.pos = round(self.pos + self.vel*dt + aceleracao*dt*dt/2, 2)
+        self.pos += self.vel*dt + aceleracao*dt*dt/2
         self.vel += aceleracao*dt
+        self.pos = round(self.pos, 2)
 
         return self.pos
 
@@ -44,6 +46,13 @@ class Pid:
 
     def set_icon(self, newicon):
         self.icon = newicon
+
+    def set_constant_error(self, const_error):
+        """
+        Set the persistent error for integral part.
+        Its divided by -2 to make it proporcional to the grid pos.
+        """
+        self.constant_error = -float(const_error)/2
 
     def reset(self):
         self.pos = -100

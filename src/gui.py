@@ -16,7 +16,8 @@ TITLE_ASSET = './assets/title.txt'
 SIMULATION_SETUP_ASSET = './assets/setup/conteiner.txt'
 # simulaiton_setup -> components
 NUM_PIDS_ASSET = './assets/setup/num_pids.txt'
-RESTART_ASSET = './assets/setup/start.txt'
+CONST_ERROR_ASSET = './assets/setup/const_error.txt'
+RESTART_ASSET = './assets/setup/restart.txt'
 
 # pid setup -> conteiner:
 PID_SETUP_CONTEINER_ASSET = './assets/pid_label/conteiner.txt'
@@ -126,9 +127,15 @@ class SimulationSetup(Conteiner):
         super().__init__(conteiner, assetfile, attr)
         self.create_win()
 
-    def generate_components(self, numpids_trigger, restart_triiger):
+    def generate_components(self,
+                            numpids_trigger,
+                            cons_error_trigger,
+                            restart_triiger ):
         self.components_list = [
-            TextInput(self.win, NUM_PIDS_ASSET, trigger=numpids_trigger),
+            TextInput(self.win, NUM_PIDS_ASSET, filterfunc=str.isdecimal,
+                      trigger=numpids_trigger),
+            TextInput(self.win, CONST_ERROR_ASSET, filterfunc=filters.isFloat,
+                      trigger=cons_error_trigger),
             Button(self.win, RESTART_ASSET, trigger=restart_triiger)
         ]
 
@@ -299,6 +306,10 @@ class PidManager():
     def reset_pid_pos(self):
         for pid in self.pid_list:
             pid.reset()
+    
+    def set_contant_sp_error(self, const_error: str):
+        for pid in self.get_visible_pids():
+            pid.set_constant_error(const_error)
 
 
 class Gui():
@@ -320,6 +331,7 @@ class Gui():
         # generate pid num input area and start button
         self.simu_setup_conteiner.generate_components(
             self.set_num_of_pids,  # num pids trigger
+            self.pid_manager.set_contant_sp_error, # const error trigger
             self.restart_simulation  # restart trigger
         )
 
