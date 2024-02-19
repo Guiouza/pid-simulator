@@ -40,6 +40,8 @@ PID_GRID_ASSET = './assets/simulation/pid_grid.txt'
 
 # Simulation Setting
 MAX_NPIDS = 9
+DELTA_TIME = 0.1
+UPDATE_PID_TIMER = 0.01
 BLINK_TIMER = 0.4
 
 
@@ -124,10 +126,10 @@ class SimulationSetup(Conteiner):
         super().__init__(conteiner, assetfile, attr)
         self.create_win()
 
-    def generate_components(self, numpids_trigger, start_triiger):
+    def generate_components(self, numpids_trigger, restart_triiger):
         self.components_list = [
             TextInput(self.win, NUM_PIDS_ASSET, trigger=numpids_trigger),
-            Button(self.win, RESTART_ASSET, trigger=start_triiger)
+            Button(self.win, RESTART_ASSET, trigger=restart_triiger)
         ]
 
 
@@ -313,7 +315,7 @@ class Gui():
         # generate pid num input area and start button
         self.simu_setup_conteiner.generate_components(
             self.set_num_of_pids, # num pids trigger
-            self.start_simulation # start trigger
+            self.restart_simulation # restart trigger
         )
 
         # draw the components
@@ -333,6 +335,10 @@ class Gui():
 
         # simulation events
         self.restart_simulation = td.Event()
+        self.end_simulation = td.Event()
+        self.runing_simulation = td.Event()
+        # run simulaiton thread:
+        self.simulation_td = td.Thread(target=self.run_simulation)
 
     def draw(self, autorefresh=False):
         self.title.draw(autorefresh)
@@ -412,6 +418,12 @@ class Gui():
     def get_current_selection(self) -> TextInput|Button:
         return self.gui_content_map[self.cursor_y_index][self.cursor_x_index]
 
+    def run_simulation(self):
+        while not self.end_simulation.is_set():
+            self.runing_simulation.wait()
+            self.pid_manager.update_pid_pos(DELTA_TIME)
+            sleep(UPDATE_PID_TIMER)
+
     def main(self, stdscr: _CursesWindow):
         """
         Runs a loop that gets the user inputs for inserting in text areas or \
@@ -429,6 +441,7 @@ class Gui():
         self.moving_cursor.set()
         # start threads
         self.blink_td.start()
+        self.simulation_td.start()
 
         stdscr.nodelay(True)
         curses.curs_set(0)
@@ -444,6 +457,7 @@ class Gui():
                     pass
                 case 'KEY_IC' | 'KEY_BACKSPACE' | '\b' | '\x7f' | '^?' | '\n':
                     # insert mode
+                    self.runing_simulation.clear()
                     self.moving_cursor.clear()
                     self.current_selection.reset_attr()
                     self.current_selection()
@@ -464,10 +478,16 @@ class Gui():
                     # quit
                     self.blinking.clear()
                     self.blink_td.join()
+                    self.end_simulation.set()
+                    self.runing_simulation.set()
+                    self.simulation_td.join()
                     break
                 case 'p' | ' ':
                     # pause
-                    pass
+                    if self.runing_simulation.is_set():
+                        self.runing_simulation.clear()
+                    else:
+                        self.runing_simulation.set()
 
             if cursor_moved:
                 # reset color after blink
@@ -481,6 +501,18 @@ class Gui():
                 # change the color to blink
                 self.chg_current_selection_color()
                 self.change_color.clear()
+            
+            if self.restart_simulation.is_set():
+                # restart simulation
+                self.restart_simulation.clear()
+                was_runing = self.runing_simulation.is_set()
+                # pause simulation if was runing
+                self.runing_simulation.clear()
+                # reset pids posiiton
+                self.pid_manager.reset_pid_pos()
+                if was_runing:
+                    # resume simulation thread
+                    self.runing_simulation.set()
 
             # redraw the terminal
             self.redraw()
