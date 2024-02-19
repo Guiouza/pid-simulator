@@ -1,4 +1,5 @@
 from curses import wrapper, _CursesWindow
+from time import sleep
 import threading as td
 import curses
 # internal libs
@@ -39,6 +40,7 @@ PID_GRID_ASSET = './assets/simulation/pid_grid.txt'
 
 # Simulation Setting
 MAX_NPIDS = 9
+BLINK_TIMER = 0.4
 
 
 class PidLabel(Conteiner):
@@ -322,6 +324,13 @@ class Gui():
         self.cursor_y_index = 0
         self.cursor_x_index = 0
 
+        # blink events
+        self.blinking = td.Event()
+        self.change_color = td.Event()
+        self.moving_cursor = td.Event()
+        # blink thread
+        self.blink_td = td.Thread(target=self.blink)
+
         # simulation events
         self.restart_simulation = td.Event()
 
@@ -354,6 +363,18 @@ class Gui():
     def restart_simulation(self):
         """Start Button trigger."""
         self.restart_simulation.set()
+
+    def blink(self):
+        while self.blinking.is_set():
+            self.moving_cursor.wait()
+            self.change_color.set()
+            sleep(BLINK_TIMER)
+
+    def chg_current_selection_color(self):
+        if self.current_selection.labelattr == curses.A_NORMAL:
+            self.current_selection.chlabelattr(curses.A_REVERSE, True)
+        else:
+            self.current_selection.chlabelattr(curses.A_NORMAL, True)
 
     def move_cursor(self, direction) -> int:
         have_moved = False
@@ -404,6 +425,11 @@ class Gui():
         cursor_moved = True
         self.current_selection = self.get_current_selection()
 
+        self.blinking.set()
+        self.moving_cursor.set()
+        # start threads
+        self.blink_td.start()
+
         stdscr.nodelay(True)
         curses.curs_set(0)
         while True:
@@ -418,7 +444,10 @@ class Gui():
                     pass
                 case 'KEY_IC' | 'KEY_BACKSPACE' | '\b' | '\x7f' | '^?' | '\n':
                     # insert mode
+                    self.moving_cursor.clear()
+                    self.current_selection.reset_attr()
                     self.current_selection()
+                    self.moving_cursor.set()
                 case 'KEY_UP':
                     # move up
                     cursor_moved = self.move_cursor('up')
@@ -433,15 +462,25 @@ class Gui():
                     cursor_moved = self.move_cursor('right')
                 case 'q' | 'Q':
                     # quit
+                    self.blinking.clear()
+                    self.blink_td.join()
                     break
                 case 'p' | ' ':
                     # pause
                     pass
 
             if cursor_moved:
+                # reset color after blink
+                self.current_selection.reset_attr()
+                # move cursor
                 self.current_selection = self.get_current_selection()
                 stdscr.move(*self.current_selection.get_cursor_absyx())
                 cursor_moved = False
+
+            if self.change_color.is_set():
+                # change the color to blink
+                self.chg_current_selection_color()
+                self.change_color.clear()
 
             # redraw the terminal
             self.redraw()
@@ -453,7 +492,7 @@ def main(stdscr: _CursesWindow):
     curses.noecho()
 
     gui = Gui(stdscr)
-    stdscr.getch()
+    gui.main(stdscr)
 
 
 if __name__ == '__main__':
