@@ -330,7 +330,12 @@ class Gui():
         self.pid_setup_conteiner.draw(autorefresh)
         self.simu_setup_conteiner.draw(autorefresh)
         self.simulation_conteiner.draw(autorefresh)
-    
+
+    def redraw(self):
+        self.pid_setup_conteiner.draw()
+        self.simu_setup_conteiner.draw()
+        self.simulation_conteiner.draw(True)
+
     def set_num_of_pids(self, npids_str: str):
         """Num of PIDs trigger."""
         npids = int(npids_str)
@@ -349,7 +354,7 @@ class Gui():
     def restart_simulation(self):
         """Start Button trigger."""
         self.restart_simulation.set()
-    
+
     def move_cursor(self, direction) -> int:
         have_moved = False
 
@@ -385,6 +390,62 @@ class Gui():
 
     def get_current_selection(self) -> TextInput|Button:
         return self.gui_content_map[self.cursor_y_index][self.cursor_x_index]
+
+    def main(self, stdscr: _CursesWindow):
+        """
+        Runs a loop that gets the user inputs for inserting in text areas or \
+            pressing buttons.
+        The user can press:
+         * `q` to exit;
+         * `enter`, `backspace` or `insert` to edit a input;
+         * `↑`, `↓`, `←` and `→` to move the cursor to other label;
+         * `p` or `space` when runing the simulation this will pause it.
+        """
+        cursor_moved = True
+        self.current_selection = self.get_current_selection()
+
+        stdscr.nodelay(True)
+        curses.curs_set(0)
+        while True:
+            try:
+                key = stdscr.getkey()
+            except:
+                key = None
+
+            # match keys
+            match key:
+                case None:
+                    pass
+                case 'KEY_IC' | 'KEY_BACKSPACE' | '\b' | '\x7f' | '^?' | '\n':
+                    # insert mode
+                    self.current_selection()
+                case 'KEY_UP':
+                    # move up
+                    cursor_moved = self.move_cursor('up')
+                case 'KEY_DOWN':
+                    # move down
+                    cursor_moved = self.move_cursor('down')
+                case 'KEY_LEFT':
+                    # move left
+                    cursor_moved = self.move_cursor('left')
+                case 'KEY_RIGHT':
+                    # move right
+                    cursor_moved = self.move_cursor('right')
+                case 'q' | 'Q':
+                    # quit
+                    break
+                case 'p' | ' ':
+                    # pause
+                    pass
+
+            if cursor_moved:
+                self.current_selection = self.get_current_selection()
+                stdscr.move(*self.current_selection.get_cursor_absyx())
+                cursor_moved = False
+
+            # redraw the terminal
+            self.redraw()
+            stdscr.refresh()
 
 
 def main(stdscr: _CursesWindow):
