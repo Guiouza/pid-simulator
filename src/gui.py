@@ -47,11 +47,11 @@ BLINK_TIMER = 0.4
 
 class PidLabel(Conteiner):
     def __init__(self,
-                conteiner: _CursesWindow,
-                assetfile: str,
-                n_id: int,
-                pid: Pid,
-                attr=curses.A_NORMAL):
+                 conteiner: _CursesWindow,
+                 assetfile: str,
+                 n_id: int,
+                 pid: Pid,
+                 attr=curses.A_NORMAL):
         super().__init__(conteiner, assetfile, attr)
         self.format_asset(n_id=n_id)
         self.pid = pid
@@ -98,7 +98,7 @@ class PidSetup(Conteiner):
     def __init__(self,
                  conteiner: _CursesWindow,
                  assetfile: str,
-                 attr=curses.A_NORMAL ):
+                 attr=curses.A_NORMAL):
         super().__init__(conteiner, assetfile, attr)
         self.create_win()
 
@@ -135,11 +135,12 @@ class SimulationSetup(Conteiner):
 
 class PidPosition(Text):
     pos_max_length = 7
+
     def __init__(self,
-                    conteiner: _CursesWindow,
-                    assetfile: str,
-                    pid: Pid,
-                    attr=curses.A_NORMAL ):
+                 conteiner: _CursesWindow,
+                 assetfile: str,
+                 pid: Pid,
+                 attr=curses.A_NORMAL):
         super().__init__(conteiner, assetfile, attr)
         self.asset_template = self.asset['text']
         self.pid = pid
@@ -158,7 +159,7 @@ class Header(Conteiner):
     def __init__(self,
                  conteiner: _CursesWindow,
                  assetfile: str,
-                 attr=curses.A_NORMAL ):
+                 attr=curses.A_NORMAL):
         super().__init__(conteiner, assetfile, attr)
         # align: center
         conteiner_ncols = conteiner.getmaxyx()[1]
@@ -177,10 +178,10 @@ class Header(Conteiner):
 
 class PidGrid(Text):
     def __init__(self,
-                    conteiner: _CursesWindow,
-                    assetfile: str,
-                    pid=None,
-                    attr=curses.A_NORMAL ):
+                 conteiner: _CursesWindow,
+                 assetfile: str,
+                 pid=None,
+                 attr=curses.A_NORMAL):
         super().__init__(conteiner, assetfile, attr)
         self.pid = pid
 
@@ -194,18 +195,18 @@ class PidGrid(Text):
         self.grid_template = self.asset['text']
 
     def draw(self, autorefresh=False) -> None:
-        self.asset['text'] = self.grid_template # reset asset['text']
-        
+        self.asset['text'] = self.grid_template  # reset asset['text']
+
         if self.visible:
             n = map_pos(self.pid.pos, self.grid_width)
             # format to show the pid icon
             self.asset['text'] = self.asset['text'][:n] + \
                 self.pid.icon + self.asset['text'][n+1:]
             return super().draw(autorefresh)
-        
+
         self.visible = True
         super().draw(autorefresh)
-        self.visible = False    
+        self.visible = False
         return
 
 
@@ -213,7 +214,7 @@ class Display(Conteiner):
     def __init__(self,
                  conteiner: _CursesWindow,
                  assetfile: str,
-                 attr=curses.A_NORMAL ):
+                 attr=curses.A_NORMAL):
         super().__init__(conteiner, assetfile, attr)
         conteiner_ncols = conteiner.getmaxyx()[1]
         # Fill wall the window marging with the border (-2)
@@ -228,7 +229,7 @@ class Display(Conteiner):
         space = self.asset['ncols']//2 - len('+100')
         tick.format_asset(space=' '*space)
         # add to components
-        self.components_list = [ tick ]
+        self.components_list = [tick]
 
         for n in range(self.asset['nlines'] - tick.asset['nlines']):
             if n == 0 or n == self.asset['nlines'] - tick.asset['nlines'] - 1:
@@ -238,9 +239,10 @@ class Display(Conteiner):
             else:
                 # grid that will show their pids
                 component = PidGrid(self.win, PID_GRID_ASSET, pid_list[n-1])
-            component.asset['win_y'] += component.asset['nlines']*n + tick.asset['nlines']
+            component.asset['win_y'] += component.asset['nlines'] * \
+                n + tick.asset['nlines']
 
-            self.components_list.append(component) 
+            self.components_list.append(component)
 
     def set_first_n_components_to_visible(self, n: int):
         index = 0
@@ -258,7 +260,7 @@ class Simulation(Conteiner):
     def __init__(self,
                  conteiner: _CursesWindow,
                  assetfile: str,
-                 attr=curses.A_NORMAL ):
+                 attr=curses.A_NORMAL):
         super().__init__(conteiner, assetfile, attr)
         self.asset['nlines'] = curses.LINES
         self.asset['ncols'] = nearst_odd(curses.COLS - self.asset['win_x'])
@@ -283,10 +285,10 @@ class PidManager():
     def __init__(self, npids):
         self.visible_pids = npids
         self.pid_list = [Pid() for n in range(npids)]
-    
+
     def set_visible_pids(self, npids: int) -> None:
         self.visible_pids = npids
-    
+
     def get_visible_pids(self) -> list[Pid]:
         return self.pid_list[:self.visible_pids]
 
@@ -303,19 +305,22 @@ class Gui():
     def __init__(self, stdscr):
         self.title = Text(stdscr, TITLE_ASSET, curses.A_REVERSE)
         self.pid_setup_conteiner = PidSetup(stdscr, PID_SETUP_CONTEINER_ASSET)
-        self.simu_setup_conteiner = SimulationSetup(stdscr, SIMULATION_SETUP_ASSET)
-        self.simulation_conteiner = Simulation(stdscr, SIMULATION_CONTEINER_ASSET)
+        self.simu_setup_conteiner = SimulationSetup(
+            stdscr, SIMULATION_SETUP_ASSET)
+        self.simulation_conteiner = Simulation(
+            stdscr, SIMULATION_CONTEINER_ASSET)
 
         self.pid_manager = PidManager(MAX_NPIDS)
 
         # generate pid setup input areas: (kp kd ki icon)
         self.pid_setup_conteiner.generate_components(self.pid_manager.pid_list)
         # generate the simulation header and display
-        self.simulation_conteiner.generate_components(self.pid_manager.pid_list)
+        self.simulation_conteiner.generate_components(
+            self.pid_manager.pid_list)
         # generate pid num input area and start button
         self.simu_setup_conteiner.generate_components(
-            self.set_num_of_pids, # num pids trigger
-            self.restart_simulation # restart trigger
+            self.set_num_of_pids,  # num pids trigger
+            self.restart_simulation  # restart trigger
         )
 
         # draw the components
@@ -359,9 +364,11 @@ class Gui():
         self.simulation_conteiner.set_first_n_components_to_visible(npids)
 
         # set visible content and get pid labels that are visible
-        pid_label_list = self.pid_setup_conteiner.set_first_n_components_to_visible(npids)
+        pid_label_list = self.pid_setup_conteiner.set_first_n_components_to_visible(
+            npids)
         # reset gui content to visible input areas
-        self.gui_content_map = [ self.simu_setup_conteiner.components_list ] # keep num_pids and start
+        # keep num_pids and start
+        self.gui_content_map = [self.simu_setup_conteiner.components_list]
         for pid_label in pid_label_list:
             # get the input areas of the pid_label (kp, kd, ki, icon)
             self.gui_content_map.append(pid_label.components_list)
@@ -409,13 +416,13 @@ class Gui():
         gui_content_map_cols = len(self.gui_content_map[self.cursor_y_index])
         if self.cursor_x_index >= gui_content_map_cols:
             self.cursor_x_index = gui_content_map_cols - 1
-        
+
         if self.change_color.is_set():
             self.blink()
 
         return have_moved
 
-    def get_current_selection(self) -> TextInput|Button:
+    def get_current_selection(self) -> TextInput | Button:
         return self.gui_content_map[self.cursor_y_index][self.cursor_x_index]
 
     def run_simulation(self):
@@ -501,7 +508,7 @@ class Gui():
                 # change the color to blink
                 self.chg_current_selection_color()
                 self.change_color.clear()
-            
+
             if self.restart_simulation.is_set():
                 # restart simulation
                 self.restart_simulation.clear()

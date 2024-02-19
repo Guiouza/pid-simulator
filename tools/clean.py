@@ -13,6 +13,7 @@ for file in os.scandir('./src'):
                     if ', _CursesWindow' in line:
                         text = text.replace(', _CursesWindow', '')
                     if 'from curses import _CursesWindow\n' in line:
-                        text = text.replace('from curses import _CursesWindow\n', '')
+                        text = text.replace(
+                            'from curses import _CursesWindow\n', '')
 
                     newfile.write(text)

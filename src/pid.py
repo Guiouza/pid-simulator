@@ -26,7 +26,7 @@ class Pid:
         self.integral += error
         i_fix = self.ki * self.integral
 
-        aceleracao =  p_fix + d_fix + i_fix
+        aceleracao = p_fix + d_fix + i_fix
 
         self.pos = round(self.pos + self.vel*dt + aceleracao*dt*dt/2, 2)
         self.vel += aceleracao*dt

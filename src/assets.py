@@ -2,11 +2,12 @@ from curses import _CursesWindow
 import curses
 
 
-def read_asset(fname) -> dict[str: str|int]:
+def read_asset(fname) -> dict[str: str | int]:
     asset = {}
     # read asset file
     with open(fname) as file:
-        nlines, ncols, win_y, win_x, box, text_y, text_x, *type_info = file.readline().split()
+        nlines, ncols, win_y, win_x, box, text_y, text_x, * \
+            type_info = file.readline().split()
         asset['text'] = file.read()
 
     # extract base info
@@ -39,7 +40,7 @@ class Text:
     def __init__(self,
                  conteiner: _CursesWindow,
                  assetfile: str,
-                 attr=curses.A_NORMAL ):
+                 attr=curses.A_NORMAL):
         self.asset = read_asset(assetfile)
         self.asset['win_y'] += conteiner.getbegyx()[0]
         self.asset['win_x'] += conteiner.getbegyx()[1]
@@ -50,7 +51,7 @@ class Text:
         self.conteiner = conteiner
         self.win = None
         self.is_visible = False
-    
+
     def chattr(self, attr, autorefresh=True):
         """
         Change the attribute and redraw the window, but do not refresh.
@@ -119,7 +120,7 @@ class Text:
             except:
                 # cursor exceeds the windows size
                 self.win.move(self.asset['text_y'], self.asset['text_x'])
-        
+
         if autorefresh:
             self.win.refresh()
         self.is_visible = True
@@ -131,7 +132,7 @@ class Text:
         will change the asset text to '1 + 2 = 3' the same way str.format funciton does.
         """
         self.asset['text'] = self.asset['text'].format(**kargs)
-    
+
     def reset_attr(self, autorefresh=True):
         self.chattr(self.original_attr, autorefresh)
 
@@ -141,11 +142,11 @@ class Button(Text):
                  conteiner: _CursesWindow,
                  assetfile: str,
                  labelattr=curses.A_NORMAL,
-                 trigger=None ):
+                 trigger=None):
         super().__init__(conteiner, assetfile, labelattr)
         self.labelattr = self.attr
         self.trigger = trigger
-    
+
     def __call__(self):
         """Call the trigger"""
         return self.trigger()
@@ -154,7 +155,7 @@ class Button(Text):
         """Change the label attrbute and redraw. Autorefresh will refresh the window."""
         self.labelattr = labelattr
         return super().chattr(labelattr, autorefresh)
-    
+
     def chattr(self, attr, autorefresh=True):
         """Dirivated from Text object, work just as `labelchatrr` method"""
         self.labeltatr = attr
@@ -162,7 +163,7 @@ class Button(Text):
 
     def get_cursor_relyx(self) -> tuple[int, int]:
         return self.asset['cursor_y'], self.asset['cursor_x']
-    
+
     def get_cursor_absyx(self) -> tuple[int, int]:
         y = self.asset['cursor_y'] + self.asset['win_y']
         x = self.asset['cursor_x'] + self.asset['win_x']
@@ -180,7 +181,7 @@ class TextInput(Text):
                  attr=curses.A_NORMAL,
                  labelattr=curses.A_REVERSE,
                  filterfunc=str.isprintable,
-                 trigger=None ):
+                 trigger=None):
         super().__init__(conteiner, assetfile, attr)
         self.filter = filterfunc
         self.labelattr = labelattr
@@ -233,7 +234,7 @@ class TextInput(Text):
         # verify if was given a input
         if self.current_content == '' and self.asset['default'] != '':
             self.current_content = self.asset['default']
-        
+
         # return terminal to prev state
         self.chlabelattr(old_labelattr, True)
         self.win.nodelay(False)
@@ -268,7 +269,7 @@ class TextInput(Text):
                 self.current_content,
                 self.labelattr
             )
-        except:   
+        except:
             # cursor exceeds the windows size
             self.win.move(self.asset['input_y'], self.asset['input_y'])
 
@@ -296,7 +297,7 @@ class Conteiner(Text):
     def __init__(self,
                  conteiner: _CursesWindow,
                  assetfile: str,
-                 attr=curses.A_NORMAL ):
+                 attr=curses.A_NORMAL):
         super().__init__(conteiner, assetfile, attr)
         self.components_list = []
 
@@ -314,7 +315,7 @@ class Conteiner(Text):
         A prototype for a conteiner generate_components method.
         """
         pass
-    
+
     def set_first_n_components_to_visible(self, n: int):
         index = 0
         for component in self.components_list:
