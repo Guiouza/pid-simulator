@@ -1,5 +1,8 @@
 # PID - Simulator
 
+> [!CAUTION]
+> Don't take this project sirious its just a timepast for my weekend!
+
 Its a terminal interface for testing diferent configurations of PIDs controllers.
 It was originaly plained to run in a windows terminal using arch wsl, but as it only uses curses
 builting library of python for Unix systems, it probably runs in any modern terminal if you are using a linux.
@@ -7,7 +10,7 @@ I din't tested in a windows system with windows-curses.
 
 ## Running
 
-To run the program use one of the toold inside `./tools/` directory:
+To run the program use one of the tools inside `./tools/` directory:
 
 ```zsh
 ./tools/run.sh
@@ -49,5 +52,4 @@ See the docs at: [How to craete asets](./documents/How%20to%20create%20assets.md
 
 ## Why no tests?
 
-Because I have no idea how to use pytest with it. I actualy thing pytest can't handle it, so I should be using pyautogui
-but as it is a simple project I've just skiped this.
+I'm not pretending to work on this more ever again, I should not be using the terminal for this.
